@@ -1,5 +1,8 @@
 # CV Builder
 
+**Live demo:** https://cv-builder-8lfe.onrender.com
+(free tier — spins down when idle, first load after a while may take ~30-60s)
+
 A small web app that turns a form (education, experience, skills, publications,
 projects, extracurricular activities) into a PDF resume, using
 [RenderCV](https://github.com/rendercv/rendercv)'s `classic` theme (Typst-based)
