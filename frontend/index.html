@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CV Builder</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    background: #f4f5f7;
+    color: #1f2328;
+  }
+  header {
+    background: #1f2328;
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+  }
+  header h1 { margin: 0; font-size: 1.25rem; }
+  header p { margin: 0.25rem 0 0; color: #b6bac0; font-size: 0.85rem; }
+  main {
+    max-width: 780px;
+    margin: 1.5rem auto 4rem;
+    padding: 0 1rem;
+  }
+  fieldset {
+    background: #fff;
+    border: 1px solid #d8dbe0;
+    border-radius: 8px;
+    padding: 1rem 1.25rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  legend { font-weight: 600; padding: 0 0.4rem; }
+  label { display: block; font-size: 0.85rem; color: #4a4f57; margin: 0.6rem 0 0.2rem; }
+  input[type=text], input[type=email], input[type=month], textarea {
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 3.2em; }
+  .row { display: flex; gap: 0.75rem; }
+  .row > div { flex: 1; }
+  .inline-check { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.85rem; }
+  .inline-check input { width: auto; }
+  .entry {
+    border: 1px dashed #c7cbd1;
+    border-radius: 6px;
+    padding: 0.75rem 0.9rem 0.9rem;
+    margin-top: 0.9rem;
+  }
+  .entry.dragging, .highlight-row.dragging { opacity: 0.4; }
+  .entry-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .drag-handle {
+    cursor: grab;
+    color: #8a8f98;
+    font-size: 1rem;
+    user-select: none;
+    padding: 0 0.3rem;
+    line-height: 1;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .entry .remove-btn {
+    background: none;
+    border: none;
+    color: #b3261e;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  .highlight-row { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.3rem; }
+  .highlight-row input { flex: 1; }
+  .highlight-row button { flex: none; }
+  .add-btn, .add-highlight-btn {
+    margin-top: 0.75rem;
+    background: #eef1f5;
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .add-highlight-btn { margin-top: 0.4rem; }
+  button.small-remove {
+    border: none;
+    background: none;
+    color: #b3261e;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .submit-bar { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+  #submitBtn {
+    background: #1f6feb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.6rem 1.4rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  #submitBtn[disabled] { opacity: 0.6; cursor: default; }
+  #clearDraftBtn {
+    background: none;
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #4a4f57;
+  }
+  #status { font-size: 0.85rem; }
+  #status.error { color: #b3261e; white-space: pre-wrap; }
+  #status.ok { color: #1a7f37; }
+  .draft-hint { font-size: 0.75rem; color: #8a8f98; margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CV Builder</h1>
+  <p>填寫下方資料，產生使用 RenderCV classic 主題排版的 PDF 履歷</p>
+</header>
+
+<main>
+  <form id="cvForm">
+
+    <fieldset>
+      <legend>基本資料</legend>
+      <label for="name">姓名 *</label>
+      <input type="text" id="name" required>
+
+      <label for="email">Email *</label>
+      <input type="email" id="email" required>
+
+      <div class="row">
+        <div>
+          <label for="location">所在地</label>
+          <input type="text" id="location" placeholder="City, Country">
+        </div>
+        <div>
+          <label for="linkedin_username">LinkedIn 使用者名稱</label>
+          <input type="text" id="linkedin_username" placeholder="username">
+        </div>
+        <div>
+          <label for="github_username">GitHub 使用者名稱</label>
+          <input type="text" id="github_username" placeholder="username">
+        </div>
+      </div>
+
+      <label for="objective">自我介紹 / Objective（選填）</label>
+      <textarea id="objective"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>學歷</legend>
+      <div id="educationList"></div>
+      <button type="button" class="add-btn" data-add="education">+ 新增一筆學歷</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>工作 / 研究經驗</legend>
+      <div id="experienceList"></div>
+      <button type="button" class="add-btn" data-add="experience">+ 新增一筆經驗</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>技能</legend>
+      <div id="skillsList"></div>
+      <button type="button" class="add-btn" data-add="skill">+ 新增一筆技能</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>發表著作 / Publications（選填）</legend>
+      <div id="publicationsList"></div>
+      <button type="button" class="add-btn" data-add="publication">+ 新增一筆著作</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>專案 / Projects（選填）</legend>
+      <div id="projectsList"></div>
+      <button type="button" class="add-btn" data-add="project">+ 新增一筆專案</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>課外活動 / Extracurricular（選填，每行一項）</legend>
+      <textarea id="extracurricular" placeholder="學生會會長 (2022-2023)&#10;偏鄉英語教學志工&#10;系籃球隊隊長"></textarea>
+    </fieldset>
+
+    <div class="submit-bar">
+      <button type="submit" id="submitBtn">產生 PDF</button>
+      <button type="button" id="clearDraftBtn">清除草稿</button>
+      <span id="status"></span>
+    </div>
+    <p class="draft-hint">內容會自動儲存草稿在這台瀏覽器（重新整理、關掉分頁都不會不見；換瀏覽器或清瀏覽器資料則會消失）。</p>
+  </form>
+</main>
+
+<template id="educationTpl">
+  <div class="entry" data-kind="education">
+    <div class="entry-header">
+      <span class="drag-handle" draggable="true" title="拖曳排序">⠿ 拖曳排序</span>
+      <button type="button" class="remove-btn" data-remove>移除</button>
+    </div>
+    <label>學校 *</label>
+    <input type="text" data-field="institution" required>
+    <div class="row">
+      <div>
+        <label>學位</label>
+        <input type="text" data-field="degree" placeholder="BS / MS / PhD">
+      </div>
+      <div>
+        <label>領域 *</label>
+        <input type="text" data-field="area" required placeholder="Computer Science">
+      </div>
+      <div>
+        <label>地點</label>
+        <input type="text" data-field="location">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>開始日期</label>
+        <input type="month" data-field="start_date">
+      </div>
+      <div>
+        <label>結束日期</label>
+        <input type="month" data-field="end_date">
+        <label class="inline-check"><input type="checkbox" data-field="current"> 至今</label>
+      </div>
+    </div>
+    <label>重點（每行一項）</label>
+    <div class="highlight-list"></div>
+    <button type="button" class="add-highlight-btn" data-add-highlight>+ 新增一行重點</button>
+  </div>
+</template>
+
+<template id="experienceTpl">
+  <div class="entry" data-kind="experience">
+    <div class="entry-header">
+      <span class="drag-handle" draggable="true" title="拖曳排序">⠿ 拖曳排序</span>
+      <button type="button" class="remove-btn" data-remove>移除</button>
+    </div>
+    <label>公司 / 單位 *</label>
+    <input type="text" data-field="company" required>
+    <div class="row">
+      <div>
+        <label>職稱 *</label>
+        <input type="text" data-field="position" required>
+      </div>
+      <div>
+        <label>地點</label>
+        <input type="text" data-field="location">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>開始日期</label>
+        <input type="month" data-field="start_date">
+      </div>
+      <div>
+        <label>結束日期</label>
+        <input type="month" data-field="end_date">
+        <label class="inline-check"><input type="checkbox" data-field="current"> 至今</label>
+      </div>
+    </div>
+    <label>重點（每行一項）</label>
+    <div class="highlight-list"></div>
+    <button type="button" class="add-highlight-btn" data-add-highlight>+ 新增一行重點</button>
+  </div>
+</template>
+
+<template id="skillTpl">
+  <div class="entry" data-kind="skill">
+    <div class="entry-header">
+      <span class="drag-handle" draggable="true" title="拖曳排序">⠿ 拖曳排序</span>
+      <button type="button" class="remove-btn" data-remove>移除</button>
+    </div>
+    <div class="row">
+      <div>
+        <label>類別</label>
+        <input type="text" data-field="label" placeholder="Programming Languages">
+      </div>
+      <div>
+        <label>內容</label>
+        <input type="text" data-field="details" placeholder="Python, C++, SQL">
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="publicationTpl">
+  <div class="entry" data-kind="publication">
+    <div class="entry-header">
+      <span class="drag-handle" draggable="true" title="拖曳排序">⠿ 拖曳排序</span>
+      <button type="button" class="remove-btn" data-remove>移除</button>
+    </div>
+    <label>標題 *</label>
+    <input type="text" data-field="title" placeholder="例：Efficient Neural Architecture Search for Resource-Constrained Deployment">
+    <label>作者 *（用逗號分隔，依論文順序，自己的名字也要列進去）</label>
+    <input type="text" data-field="authors" placeholder="例：Wang, X., Lee, J., *Your Name*">
+    <div class="row">
+      <div>
+        <label>期刊 / 研討會</label>
+        <input type="text" data-field="journal" placeholder="例：NeurIPS 2023 / 尚未發表可留白">
+      </div>
+      <div>
+        <label>日期</label>
+        <input type="text" data-field="date" placeholder="例：2023-07 或 2023">
+      </div>
+    </div>
+    <label>連結（DOI 或 URL）</label>
+    <input type="text" data-field="url" placeholder="例：https://doi.org/10.1234/xxxx">
+  </div>
+</template>
+
+<template id="projectTpl">
+  <div class="entry" data-kind="project">
+    <div class="entry-header">
+      <span class="drag-handle" draggable="true" title="拖曳排序">⠿ 拖曳排序</span>
+      <button type="button" class="remove-btn" data-remove>移除</button>
+    </div>
+    <label>專案名稱 *</label>
+    <input type="text" data-field="name" placeholder="例：104職缺技能比對系統 / 個人作品集網站">
+    <div class="row">
+      <div>
+        <label>開始日期</label>
+        <input type="month" data-field="start_date">
+      </div>
+      <div>
+        <label>結束日期</label>
+        <input type="month" data-field="end_date">
+        <label class="inline-check"><input type="checkbox" data-field="current"> 至今</label>
+      </div>
+    </div>
+    <label>一句話摘要</label>
+    <input type="text" data-field="summary" placeholder="例：用 Aho-Corasick 演算法將職缺描述自動比對到技能詞庫">
+    <label>重點（每行一項）</label>
+    <div class="highlight-list"></div>
+    <button type="button" class="add-highlight-btn" data-add-highlight>+ 新增一行重點</button>
+  </div>
+</template>
+
+<template id="highlightRowTpl">
+  <div class="highlight-row">
+    <span class="drag-handle" draggable="true" title="拖曳排序">⠿</span>
+    <input type="text" data-highlight-input>
+    <button type="button" class="small-remove" data-remove-highlight>✕</button>
+  </div>
+</template>
+
+<script>
+const templates = {
+  education: document.getElementById('educationTpl'),
+  experience: document.getElementById('experienceTpl'),
+  skill: document.getElementById('skillTpl'),
+  publication: document.getElementById('publicationTpl'),
+  project: document.getElementById('projectTpl'),
+};
+const lists = {
+  education: document.getElementById('educationList'),
+  experience: document.getElementById('experienceList'),
+  skill: document.getElementById('skillsList'),
+  publication: document.getElementById('publicationsList'),
+  project: document.getElementById('projectsList'),
+};
+const highlightRowTpl = document.getElementById('highlightRowTpl');
+const form = document.getElementById('cvForm');
+const submitBtn = document.getElementById('submitBtn');
+const status = document.getElementById('status');
+
+// --- draft autosave (localStorage) ---
+
+const DRAFT_KEY = 'cvBuilderDraft';
+
+function serializeDraft() {
+  return {
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    location: document.getElementById('location').value,
+    linkedin_username: document.getElementById('linkedin_username').value,
+    github_username: document.getElementById('github_username').value,
+    objective: document.getElementById('objective').value,
+    extracurricular: document.getElementById('extracurricular').value,
+    education: Array.from(lists.education.children).map(readEntry),
+    experience: Array.from(lists.experience.children).map(readEntry),
+    skills: Array.from(lists.skill.children).map(readEntry),
+    publications: Array.from(lists.publication.children).map(readEntry),
+    projects: Array.from(lists.project.children).map(readEntry),
+  };
+}
+
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(serializeDraft()));
+  } catch (err) {
+    // localStorage unavailable (private mode / quota) - draft just won't persist
+  }
+}
+
+function populateEntry(node, data) {
+  node.querySelectorAll('[data-field]').forEach(el => {
+    const value = data[el.dataset.field];
+    if (value === undefined) return;
+    if (el.type === 'checkbox') {
+      el.checked = Boolean(value);
+    } else {
+      el.value = value;
+    }
+  });
+  const highlightList = node.querySelector('.highlight-list');
+  if (highlightList) {
+    highlightList.innerHTML = '';
+    const highlights = Array.isArray(data.highlights) ? data.highlights : [];
+    if (highlights.length === 0) {
+      addHighlightRow(highlightList);
+    } else {
+      highlights.forEach(text => {
+        addHighlightRow(highlightList).querySelector('[data-highlight-input]').value = text;
+      });
+    }
+  }
+}
+
+function restoreDraft(draft) {
+  document.getElementById('name').value = draft.name || '';
+  document.getElementById('email').value = draft.email || '';
+  document.getElementById('location').value = draft.location || '';
+  document.getElementById('linkedin_username').value = draft.linkedin_username || '';
+  document.getElementById('github_username').value = draft.github_username || '';
+  document.getElementById('objective').value = draft.objective || '';
+  document.getElementById('extracurricular').value = draft.extracurricular || '';
+
+  Object.values(lists).forEach(list => { list.innerHTML = ''; });
+
+  (draft.education || []).forEach(e => populateEntry(addEntry('education'), e));
+  (draft.experience || []).forEach(e => populateEntry(addEntry('experience'), e));
+  (draft.skills || []).forEach(e => populateEntry(addEntry('skill'), e));
+  (draft.publications || []).forEach(e => populateEntry(addEntry('publication'), e));
+  (draft.projects || []).forEach(e => populateEntry(addEntry('project'), e));
+
+  if (!lists.education.children.length) addEntry('education');
+  if (!lists.experience.children.length) addEntry('experience');
+  if (!lists.skill.children.length) addEntry('skill');
+}
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return false;
+    restoreDraft(JSON.parse(raw));
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (err) { /* ignore */ }
+}
+
+// --- drag-to-reorder (native HTML5 drag & drop, no library needed) ---
+
+function getDragAfterElement(container, y) {
+  const items = [...container.children].filter(el => !el.classList.contains('dragging'));
+  return items.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset, element: child };
+    }
+    return closest;
+  }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+}
+
+function enableSortable(container) {
+  container.addEventListener('dragover', (e) => {
+    const dragging = container.querySelector(':scope > .dragging');
+    if (!dragging) return;
+    e.preventDefault();
+    const afterElement = getDragAfterElement(container, e.clientY);
+    if (afterElement == null) {
+      container.appendChild(dragging);
+    } else if (afterElement !== dragging) {
+      container.insertBefore(dragging, afterElement);
+    }
+  });
+  container.addEventListener('drop', (e) => e.preventDefault());
+}
+
+function wireDragHandle(handle) {
+  const item = handle.closest('.entry, .highlight-row');
+  handle.addEventListener('dragstart', (e) => {
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  });
+  handle.addEventListener('dragend', () => {
+    item.classList.remove('dragging');
+    saveDraft();
+  });
+}
+
+Object.values(lists).forEach(enableSortable);
+
+// --- entry / highlight list management ---
+
+function addEntry(kind) {
+  const node = templates[kind].content.firstElementChild.cloneNode(true);
+  node.querySelector('[data-remove]').addEventListener('click', () => {
+    node.remove();
+    saveDraft();
+  });
+  wireDragHandle(node.querySelector('.entry-header .drag-handle'));
+  const addHighlightBtn = node.querySelector('[data-add-highlight]');
+  if (addHighlightBtn) {
+    const highlightList = node.querySelector('.highlight-list');
+    enableSortable(highlightList);
+    addHighlightBtn.addEventListener('click', () => {
+      addHighlightRow(highlightList);
+      saveDraft();
+    });
+    addHighlightRow(highlightList);
+  }
+  lists[kind].appendChild(node);
+  return node;
+}
+
+function addHighlightRow(container) {
+  const row = highlightRowTpl.content.firstElementChild.cloneNode(true);
+  row.querySelector('[data-remove-highlight]').addEventListener('click', () => {
+    row.remove();
+    saveDraft();
+  });
+  wireDragHandle(row.querySelector('.drag-handle'));
+  container.appendChild(row);
+  return row;
+}
+
+document.querySelectorAll('[data-add]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    addEntry(btn.dataset.add);
+    saveDraft();
+  });
+});
+
+if (!loadDraft()) {
+  addEntry('education');
+  addEntry('experience');
+  addEntry('skill');
+} else {
+  status.className = 'ok';
+  status.textContent = '已還原上次的草稿。';
+}
+
+form.addEventListener('input', saveDraft);
+form.addEventListener('change', saveDraft);
+
+document.getElementById('clearDraftBtn').addEventListener('click', () => {
+  if (!confirm('確定要清除已儲存的草稿並清空表單嗎？')) return;
+  clearDraft();
+  form.reset();
+  Object.values(lists).forEach(list => { list.innerHTML = ''; });
+  addEntry('education');
+  addEntry('experience');
+  addEntry('skill');
+  status.className = '';
+  status.textContent = '草稿已清除。';
+});
+
+function readEntry(node) {
+  const data = {};
+  node.querySelectorAll('[data-field]').forEach(el => {
+    if (el.type === 'checkbox') {
+      data[el.dataset.field] = el.checked;
+    } else {
+      data[el.dataset.field] = el.value.trim();
+    }
+  });
+  const highlights = Array.from(node.querySelectorAll('[data-highlight-input]'))
+    .map(el => el.value.trim())
+    .filter(Boolean);
+  if (highlights.length) data.highlights = highlights;
+  return data;
+}
+
+function collectForm() {
+  return {
+    name: document.getElementById('name').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    location: document.getElementById('location').value.trim(),
+    linkedin_username: document.getElementById('linkedin_username').value.trim(),
+    github_username: document.getElementById('github_username').value.trim(),
+    objective: document.getElementById('objective').value.trim(),
+    extracurricular: document.getElementById('extracurricular').value,
+    education: Array.from(lists.education.children).map(readEntry).filter(e => e.institution),
+    experience: Array.from(lists.experience.children).map(readEntry).filter(e => e.company),
+    skills: Array.from(lists.skill.children).map(readEntry).filter(e => e.label && e.details),
+    publications: Array.from(lists.publication.children).map(readEntry).filter(e => e.title && e.authors),
+    projects: Array.from(lists.project.children).map(readEntry).filter(e => e.name),
+  };
+}
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  status.className = '';
+  status.textContent = '';
+  submitBtn.disabled = true;
+  submitBtn.textContent = '產生中…';
+
+  try {
+    const res = await fetch('/api/generate-cv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(collectForm()),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({ detail: '產生失敗' }));
+      throw new Error(errorBody.detail || '產生失敗');
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    a.download = match ? match[1] : 'CV.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    status.className = 'ok';
+    status.textContent = '已產生並下載 PDF。';
+  } catch (err) {
+    status.className = 'error';
+    status.textContent = err.message;
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = '產生 PDF';
+  }
+});
+</script>
+
+</body>
+</html>
