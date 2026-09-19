@@ -106,7 +106,7 @@
     cursor: pointer;
   }
   #submitBtn[disabled] { opacity: 0.6; cursor: default; }
-  #clearDraftBtn {
+  #clearDraftBtn, #exportDraftBtn, #importDraftBtn {
     background: none;
     border: 1px solid #c7cbd1;
     border-radius: 6px;
@@ -195,10 +195,13 @@
 
     <div class="submit-bar">
       <button type="submit" id="submitBtn">產生 PDF</button>
+      <button type="button" id="exportDraftBtn">匯出草稿</button>
+      <button type="button" id="importDraftBtn">匯入草稿</button>
+      <input type="file" id="importDraftFile" accept="application/json" hidden>
       <button type="button" id="clearDraftBtn">清除草稿</button>
       <span id="status"></span>
     </div>
-    <p class="draft-hint">內容會自動儲存草稿在這台瀏覽器（重新整理、關掉分頁都不會不見；換瀏覽器或清瀏覽器資料則會消失）。</p>
+    <p class="draft-hint">內容會自動儲存草稿在這台瀏覽器（重新整理、關掉分頁都不會不見；換瀏覽器、不同網址、或清瀏覽器資料則會消失——這種情況可以用「匯出/匯入草稿」把內容搬過去）。</p>
   </form>
 </main>
 
@@ -572,6 +575,40 @@ document.getElementById('clearDraftBtn').addEventListener('click', () => {
   addEntry('skill');
   status.className = '';
   status.textContent = '草稿已清除。';
+});
+
+document.getElementById('exportDraftBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(serializeDraft(), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const namePart = (document.getElementById('name').value.trim() || 'cv').replace(/\s+/g, '_');
+  a.download = `${namePart}_draft.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  status.className = 'ok';
+  status.textContent = '草稿已匯出成檔案。';
+});
+
+const importDraftFile = document.getElementById('importDraftFile');
+document.getElementById('importDraftBtn').addEventListener('click', () => importDraftFile.click());
+
+importDraftFile.addEventListener('change', async () => {
+  const file = importDraftFile.files[0];
+  importDraftFile.value = '';
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    restoreDraft(data);
+    saveDraft();
+    status.className = 'ok';
+    status.textContent = '草稿已匯入並儲存到這個網址。';
+  } catch (err) {
+    status.className = 'error';
+    status.textContent = '匯入失敗：檔案格式不正確（' + err.message + '）';
+  }
 });
 
 function readEntry(node) {
