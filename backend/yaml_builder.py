@@ -30,6 +30,10 @@ def build_yaml(form: dict) -> dict:
     if experience_entries:
         sections["experience"] = experience_entries
 
+    project_entries = [_build_project_entry(p) for p in form.get("projects") or [] if p.get("name")]
+    if project_entries:
+        sections["projects"] = project_entries
+
     extracurricular_lines = [
         line.strip() for line in (form.get("extracurricular") or "").splitlines() if line.strip()
     ]
@@ -51,10 +55,6 @@ def build_yaml(form: dict) -> dict:
     ]
     if publication_entries:
         sections["publications"] = publication_entries
-
-    project_entries = [_build_project_entry(p) for p in form.get("projects") or [] if p.get("name")]
-    if project_entries:
-        sections["projects"] = project_entries
 
     if sections:
         cv["sections"] = sections
